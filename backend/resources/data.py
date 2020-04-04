@@ -1,21 +1,18 @@
 from flask_restful import Resource, request
-from schema.data_schema import getSchema,customerSchema,Schema,checkSchema,updateSchema
-
-bill = []
-product = [
-    {"orderItemCode":"123","description":"123","pricePerItem":2},
-    {"orderItemCode":"0002","description":"potato chip","pricePerItem":10},
-    {"orderItemCode":"0003","description":"apple","pricePerItem":1}
-    ]
+from schema.data_schema import getSchema, customerSchema, Schema, rSchema, updateSchema, orderSchema, itemsSchema, productsSchema
+from database.data_modal import Order, Item, products
 
 getschema = getSchema(many=False)
 customerschema = customerSchema(many=False)
 schema = Schema(many=False)
-checkschema = checkSchema(many=False)
+rschema = rSchema(many=False)
 updateschema = updateSchema(many=False)
+orderschema = orderSchema(many=False)
+itemsschema = itemsSchema(many=False)
+productsschema = productsSchema(many=False)
 
-class Data(Resource):
-
+class tools:
+    
     def get_param(self):
 
         data = request.get_json(force=False)
@@ -23,164 +20,265 @@ class Data(Resource):
             data = request.form
         return data
 
-    def checkproduct(self,productCode):
+    def checkproduct(self, productCode):
 
-        global product
-        price = ""
-        for item in product:
-            if item["orderItemCode"] == productCode:
-                price = item["pricePerItem"]
+        product = products.get(productCode)
+        price = product["price"]
+
         return price
+    
+    def total(self,getlist):
+        
+        totalPrice = 0
+        i = 0
+        
+        for k,v in getlist.items():
 
+            pricePerItem = float(self.checkproduct(v["orderItemCode"]))
+            
+            if pricePerItem != "":
+                totalPrice = totalPrice+(pricePerItem * int(v["quantity"]))
+            else:
+                return {
+                        "message": "order item not exist!",
+                        "item" : v['name']
+                    }, 404
+                
+            i = i+1
+        return float(totalPrice)
+
+tools = tools()
+
+#supermarket submit order
+class Data(Resource):
+
+    #add order
     def post(self):
+        result = schema.load(tools.get_param())
+        
+        totalPrice = tools.total(result['item'])
 
-        result = schema.load(self.get_param())
-        global bill
-        pricePerItem = float(self.checkproduct(result["orderItemCode"]))
-        totalPrice = ""
-        if pricePerItem != "":
-            totalPrice = pricePerItem*int(result["quantity"])
-        else:
-            return {
-                "message": "order item code not exist!"
-            }, 404
         try:
+
+            insertorderdata = Order(
+            result['customer'],
+            result['address'],
+            result['date'],
+            result['time']
+            )
+
+            itemid = insertorderdata.insert()
+
+            try:
+                for k,v in result['item'].items():
+
+                    insertitemdata = Item(
+                    int(itemid),
+                    int(v['orderItemCode']),
+                    int(v['quantity'])
+                    )
+                            
+                    insertitemdata.insert()
+            except:
+                return{'error':'error'}
+            
             data = {
-                "orderNo": str(len(bill)),
-                "orderItemCode": result["orderItemCode"],
-                "description": result["description"],
-                "quantity":result["quantity"],
-                "pricePerItem":pricePerItem,
-                "totalPrice":totalPrice,
-                "customer":result["customer"],
-                "address":result["address"],
-                "date":result["date"],
-                "time":result["time"]
+                "orderNo": str(itemid),
+                "item": result['item'],
+                "totalPrice": totalPrice,
+                "customer": result["customer"],
+                "address": result["address"],
+                "date": result["date"],
+                "time": result["time"]
             }
-            bill.append(data)
+
             return {
                 "message": "Insert data success",
-                "data": checkschema.dump(data)
+                "data": rschema.dump(data)
             }
         except:
             return {
                 "message": "Insert data error",
-                "data": checkschema.dump(data)
+                "data": schema.dump(result)
             }
 
+#supermarket get product data and order information
 class customerData(Resource):
+    
+    #getall order
+    def get(self):
 
-    def get_param(self):
-
-        data = request.get_json(force=False)
-        if data is None:
-            data = request.form
-        return data
-
-    def post(self):
+        allorder = Order.getall()
 
         data = {}
-        result = customerschema.load(self.get_param())
 
         i = 0
 
-        for e in bill:
-            if e['customer'] == result['customer']:
-                data[i] = checkschema.dump(e)
-                i = i+1
+        for e in allorder:
+            data[i] = rschema.dump(e)
+            i = i + 1
 
         return {
-                "data": data
-            }
+            "data": data
+        }
+
+    # get all order by customer
+    def post(self):
+
+        data = {}
+        result = schema.load(tools.get_param())
+        allorder = Order.getall()
+
+        i = 0
+
+        for e in allorder:
+            if e['customer'] == result['customer']:
+                data[i] = rschema.dump(e)
+                i = i + 1
+
+        return {
+            "data": data
+        }
 
 class getData(Resource):
 
-    def get_param(self):
-
-        data = request.get_json(force=False)
-        if data is None:
-            data = request.form
-        return data
-
-    def checkproduct(self,productCode):
-
-        global product
-        price = ""
-        for item in product:
-            if item["orderItemCode"] == productCode:
-                price = item["pricePerItem"]
-        return price
-
+    #getall order
     def get(self):
+
+        allorder = Order.getall()
 
         data = {}
 
         i = 0
 
-        for e in bill:
-            data[i] = checkschema.dump(e)
-            i = i+1
+        for e in allorder:
+            data[i] = rschema.dump(e)
+            i = i + 1
 
         return {
-                "data": data
-            }
+            "data": data
+        }
 
+    #get single order
     def post(self):
 
-        result = getschema.load(self.get_param())
-        find = [item for item in bill if item["orderNo"] == result["orderNo"]]
+        result = getschema.load(tools.get_param())
+        allorder = Order.getall()
 
-        if len(find) == 0:
-            return {
-                "message": "orderNo not exist!"
-            }, 403
-        else:
-            data=find[0]
-            return {
-                "message": "",
-                "data": checkschema.dump(data)
-            }
-
-    def put(self):
-
-        result = updateschema.load(self.get_param())
-        global bill
         find = None
-        for item in bill:
-            if item["orderNo"] == result["orderNo"]:
-                find = item
-        
-                pricePerItem = float(self.checkproduct(result["orderItemCode"]))
-                totalPrice = ""
-                if pricePerItem != "":
-                    totalPrice = pricePerItem*int(result["quantity"])
 
-                item["orderItemCode"] = result["orderItemCode"]
-                item["description"] = result["description"]
-                item["quantity"] = result["quantity"]
-                item["totalPrice"] = totalPrice
-                item["customer"] = result["customer"]
-                item["address"] = result["address"]
+        i = 0
 
-                return {
-                    'message': 'Update order success',
-                    'data': checkschema.dump(item)
-                }
+        for e in allorder:
+
+            if str(e["orderNo"]) == result["orderNo"]:
+                find = e
+            else:
+                i = i + 1
 
         if find == None:
             return {
-                'message': 'order not exist!'
-            }, 403
+                       "message": "orderNo not exist!"
+                   }, 403
+        else:
+            data = find
 
+            return {
+                "message": "",
+                "data": rschema.dump(data)
+            }
 
+    #update order
+    def put(self):
 
+        result = updateschema.load(tools.get_param())
+        order = Order.get(result['orderNo'])
+
+        if order == None:
+            return {
+                       'message': 'order not exist!'
+                   }, 403
+        else:
+            itemdata = Item.getall(result['orderNo'])
+
+            itemdatalist=[]
+
+            itemlist=[]
+
+            print(itemdata)
+
+            for e in itemdata:
+
+                itemdatalist.append(e['productid'])
+
+            for k,v in result['item'].items():
+
+                itemlist.append(int(v['orderItemCode']))
+
+            print(itemdatalist)
+
+            for e in itemdata: 
+
+                for k,v in result['item'].items():
+                    if e['productid'] == int(v['orderItemCode']) and e['quantity'] != int(v['quantity']):
+                            print('update')
+                            updatedata = Item(
+                                int(result['orderNo']),
+                                int(v['orderItemCode']),
+                                int(v['quantity'])
+                                )
+                            updatedata.update()
+
+            if not(int(v['orderItemCode']) in itemdatalist):
+                print('insert')
+                insertdata = Item(
+                    int(result['orderNo']),
+                    int(v['orderItemCode']),
+                    int(v['quantity'])
+                )
+                insertdata.insert()
+
+            if not(e['productid'] in itemlist):
+                print('delete')
+                #gid = Item.get(result['orderNo'],e['productid'])
+                Item.delete(e['orderNo'],e['productid'])
+
+                    #deletedata = Item(
+                    #    int(result['orderNo']),
+                    #    int(e['productid']),
+                    #    int(e['quantity'])
+                    #)
+                    #deletedata.delete(Item.id)
+
+            totalPrice = tools.total(result['item'])
+
+            data = {
+                "orderNo": result['orderNo'],
+                "item": result['item'],
+                "totalPrice": totalPrice,
+                "customer": result["customer"],
+                "address": result["address"],
+                "date": result["date"],
+                "time": result["time"]
+            }
+                
+            return {
+                'message': 'Update order success',
+                'data': rschema.dump(data)
+            }
+
+            
+    #delete order
     def delete(self):
 
-        result = getschema.load(self.get_param())
-        global bill
-        find = [item for item in bill if item["orderNo"] == result["orderNo"]]
-        if len(find) != 0:
-            bill.remove(find[0])
+        result = getschema.load(tools.get_param())
+        
+        Order.delete(int(result['orderNo']))
+        Item.delete(int(result['orderNo']))
+            
         return {
             'message': 'Delete done!'
         }
+
+
+

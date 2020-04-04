@@ -3,21 +3,28 @@ import  { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom'
 import Form from "./components/form";
 import SearchForm from "./components/searchForm";
 import ShowAllForm from "./components/showallForm";
+import {Collapse,Navbar,NavbarBrand,Nav,NavItem} from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 function App() {
   return (
     <Router>
       <div className="App">
-	<h1>supermarket</h1>
-        <ul>
-          <li><Link to="form">Submite Form</Link></li>
-          <li><Link to="searchform">Search Form</Link></li>
-	  <li><Link to="showallform">ShowAllForm</Link></li>
-        </ul>
+      <Navbar bg="white" expand="lg">
+      <Navbar.Brand href="/"><h1>supermarket</h1></Navbar.Brand>
+      <Navbar.Toggle aria-controls="basic-navbar-nav" />
+      <Navbar.Collapse id="basic-navbar-nav">
+      <Nav>
+      <Nav.Link href="form">Submite Form</Nav.Link>
+      <Nav.Link href="searchform">Search Form</Nav.Link>
+  	  <Nav.Link href="showallform">ShowAllForm</Nav.Link>
+      </Nav>
+      </Navbar.Collapse>
+      </Navbar>
         <Switch>
           <Route path='/form' component={Form}/>
           <Route path='/searchform' component={SearchForm}/>
-	  <Route path='/showallform' component={ShowAllForm}/>
+	        <Route path='/showallform' component={ShowAllForm}/>
         </Switch>
       </div>
     </Router>
