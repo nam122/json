@@ -1,6 +1,6 @@
 from flask_marshmallow import Marshmallow,fields
 from marshmallow import validate,fields
-from database.data_modal import Order, Item, products
+from ..database.data_modal import Order, Item, products
 
 ma = Marshmallow()
 

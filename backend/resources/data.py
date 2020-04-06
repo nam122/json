@@ -1,6 +1,6 @@
 from flask_restful import Resource, request
-from schema.data_schema import getSchema, customerSchema, Schema, rSchema, updateSchema, orderSchema, itemsSchema, productsSchema
-from database.data_modal import Order, Item, products
+from ..schema.data_schema import getSchema, customerSchema, Schema, rSchema, updateSchema, orderSchema, itemsSchema, productsSchema
+from ..database.data_modal import Order, Item, products
 
 getschema = getSchema(many=False)
 customerschema = customerSchema(many=False)

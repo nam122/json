@@ -1,6 +1,6 @@
 import React,{ useEffect} from 'react';
 import  { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom';
-import Form from "./components/form";
+import submitForm from "./components/form";
 import SearchForm from "./components/searchForm";
 import ShowAllForm from "./components/showallForm";
 import {Collapse,Navbar,NavbarBrand,Nav,NavItem} from 'react-bootstrap';
@@ -22,7 +22,7 @@ function App() {
       </Navbar.Collapse>
       </Navbar>
         <Switch>
-          <Route path='/form' component={Form}/>
+          <Route path='/form' component={submitForm}/>
           <Route path='/searchform' component={SearchForm}/>
 	        <Route path='/showallform' component={ShowAllForm}/>
         </Switch>
